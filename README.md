@@ -20,13 +20,13 @@ The goal is to keep repetitive implementation loops out of the Codex conversatio
 
 ## Installation
 
-Clone the skill into your Codex skills directory. The URL below is a placeholder; no repository is published yet.
+Clone the skill into your Codex skills directory:
 
 ```bash
 mkdir -p ~/.codex/skills
 
 git clone \
-  https://github.com/<you>/dsh-executor.git \
+  https://github.com/XingGou516/dsh-executor.git \
   ~/.codex/skills/dsh-executor
 ```
 
@@ -147,3 +147,7 @@ DSH must not:
 ## Context Efficiency
 
 Codex normally inspects only `TASK.md`, `ACCEPTANCE.md`, `REWORK.md` when present, `RESULT.md`, run metadata, the relevant diff, and verification results. The full `reasoning.log` is loaded only when targeted failure diagnosis requires it.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
