@@ -105,13 +105,15 @@ If independent verification fails:
 
 ## Commands
 
-All commands are run with Node.js from the target Git repository:
+All commands are run with Node.js from anywhere inside the target Git repository, including subdirectories. The executor discovers the root with `git rev-parse --show-toplevel`. Relative `--job` paths resolve from that root, and job contract files must also be created there.
 
 ```bash
 node <skill-directory>/scripts/executor.mjs doctor
 node <skill-directory>/scripts/executor.mjs start  --job .codex-dsh/jobs/<job-id>
 node <skill-directory>/scripts/executor.mjs status --job .codex-dsh/jobs/<job-id>
 ```
+
+For example, if `git rev-parse --show-toplevel` returns `~/go2_fastlio_ws` while your shell is in `~/go2_fastlio_ws/src/foo/bar`, `.codex-dsh/jobs/<job-id>` refers to the directory under `~/go2_fastlio_ws`. You do not need to change directories before calling the executor. If a subdirectory is itself a separate Git repository, Git discovers that repository's root instead.
 
 Running the script with no command, or with `help`, `--help`, or `-h`, prints usage.
 

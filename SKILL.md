@@ -40,13 +40,15 @@ Codex must not directly implement the requested change before delegation.
 
 For a new `$dsh-executor` task:
 
-1. Inspect enough of the repository to plan the work.
+1. Find the repository root with `git rev-parse --show-toplevel` from the current working directory, then inspect enough of the repository to plan the work. Invocation from any repository subdirectory is supported; do not require the shell to be at the root.
 
 2. Create:
 
    `.codex-dsh/jobs/<job-id>/TASK.md`
 
    `.codex-dsh/jobs/<job-id>/ACCEPTANCE.md`
+
+   Create these files relative to the discovered repository root, not the current shell directory. Relative `--job` paths are also resolved from that root by the executor.
 
 3. Make `TASK.md` self-contained because DSH does not know the Codex conversation.
 
@@ -86,7 +88,7 @@ When the user invokes:
 
 `$dsh-executor continue`
 
-identify the relevant job and call exactly once:
+Locate jobs under the root returned by `git rev-parse --show-toplevel`, even when the current working directory is a subdirectory. Identify the relevant job and call exactly once:
 
 `node <skill-directory>/scripts/executor.mjs status --job .codex-dsh/jobs/<job-id>`
 
