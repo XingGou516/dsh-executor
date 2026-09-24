@@ -55,6 +55,8 @@ $dsh-executor continue
 
 Codex then checks the job status once and either reports that DSH is still running or reviews a completed candidate.
 
+Use `$dsh-executor sync <task>` to keep the same detached worker and have Codex wait quietly for its terminal result before review. If interrupted, resume the job with `$dsh-executor continue`.
+
 ## Job Layout
 
 Each task lives in its own job directory:
@@ -81,11 +83,11 @@ Starting a job is asynchronous. When `start` prints:
 WORKER_STARTED
 ```
 
-Codex must immediately end the current turn. It must not wait, sleep, poll, call `status`, re-inspect the worker, tail `reasoning.log`, or continue implementation work. There is no synchronous mode.
+In ordinary async mode, Codex must immediately end the current turn. It must not wait, sleep, poll, call `status`, re-inspect the worker, tail `reasoning.log`, or continue implementation work. Sync mode calls the quiet `wait` observer after detached start; it does not run a synchronous worker.
 
 ## Continue and Review
 
-`$dsh-executor continue` is the only way execution resumes in the Codex conversation; there is no automatic resume.
+`$dsh-executor continue` resumes an async or interrupted sync job. Sync mode automatically waits for a terminal result in the current turn.
 
 Codex identifies the relevant job and calls `status` exactly once:
 
@@ -111,6 +113,7 @@ All commands are run with Node.js from anywhere inside the target Git repository
 node <skill-directory>/scripts/executor.mjs doctor
 node <skill-directory>/scripts/executor.mjs start  --job .codex-dsh/jobs/<job-id>
 node <skill-directory>/scripts/executor.mjs status --job .codex-dsh/jobs/<job-id>
+node <skill-directory>/scripts/executor.mjs wait   --job .codex-dsh/jobs/<job-id>
 ```
 
 For example, if `git rev-parse --show-toplevel` returns `~/go2_fastlio_ws` while your shell is in `~/go2_fastlio_ws/src/foo/bar`, `.codex-dsh/jobs/<job-id>` refers to the directory under `~/go2_fastlio_ws`. You do not need to change directories before calling the executor. If a subdirectory is itself a separate Git repository, Git discovers that repository's root instead.

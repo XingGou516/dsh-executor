@@ -68,6 +68,23 @@ Expected result:
 
 Codex then ends the turn.
 
+### Sync
+
+The user invokes `$dsh-executor sync <task>`. Codex creates the same job contract and calls the same detached `start` command. After `WORKER_STARTED`, Codex calls:
+
+`node <skill-directory>/scripts/executor.mjs wait --job .codex-dsh/jobs/<job-id>`
+
+The state flow is:
+
+```text
+start detached
+  -> wait observer
+  -> terminal state
+  -> Codex review
+```
+
+Codex waits on the command with the largest interval supported by its current runtime. `wait` is a quiet local observer; sync does not change the worker lifecycle. An interrupted sync turn can be resumed with `$dsh-executor continue`.
+
 ### Continue
 
 The user later invokes:
@@ -186,6 +203,7 @@ Supported commands:
 doctor
 start
 status
+wait
 ```
 
 ### doctor
@@ -239,6 +257,10 @@ Responsibilities:
 * wait for process completion
 * tail logs
 
+### wait
+
+`wait --job` observes the latest run without starting or owning a worker. It checks `DONE` and metadata locally, about once per second, and emits no intermediate progress. It returns one terminal status: `CANDIDATE_FOR_REVIEW`, `DSH_FAILED`, or `CONTRACT_VIOLATION`. A missing run or invalid metadata is an error. Codex must not replace this command with short-interval `status` polling, frequent log reads, or short sleeps.
+
 ## 6. worker-runner.mjs
 
 The detached runner performs the long-running work.
@@ -287,7 +309,7 @@ Returned only by `start`.
 Meaning:
 
 * detached runner was launched
-* Codex must stop waiting
+* in async mode, Codex ends the turn; in sync mode, Codex calls `wait`
 
 This is not an execution result.
 
@@ -298,7 +320,7 @@ Meaning:
 * latest run has not reached a terminal state
 * runner still appears active
 
-Codex should report the state and end the turn.
+In async `continue`, Codex should report the state and end the turn.
 
 ### CANDIDATE_FOR_REVIEW
 
@@ -537,9 +559,11 @@ Codex designs.
 
 DSH implements.
 
-Codex does not wait while DSH runs.
+Async mode ends the turn while DSH runs.
 
-User explicitly resumes Codex.
+Sync mode waits only through the detached observer.
+
+User explicitly resumes Codex after an async start or interrupted sync turn.
 
 DSH cannot redefine acceptance.
 

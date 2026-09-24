@@ -788,6 +788,59 @@ reasoningLog:
 });
 }
 
+async function wait(jobArg) {
+const repoRoot = gitRoot();
+const { jobDir } = resolveJob(repoRoot, jobArg);
+const runId = latestRunId(jobDir);
+
+if (!runId) {
+throw new Error('job has no run to wait for');
+}
+
+const runDir = path.join(jobDir, 'runs', runId);
+const metadataPath = path.join(runDir, 'metadata.json');
+const donePath = path.join(runDir, 'DONE');
+const terminal = new Set([
+'CANDIDATE_FOR_REVIEW',
+'DSH_FAILED',
+'CONTRACT_VIOLATION',
+]);
+
+if (!fs.existsSync(metadataPath)) {
+throw new Error(`latest run has no metadata: ${metadataPath}`);
+}
+
+while (true) {
+  if (fs.existsSync(donePath)) {
+    const done = readJson(donePath);
+    if (!terminal.has(done.status)) {
+      throw new Error(`invalid terminal status in DONE: ${done.status}`);
+    }
+    process.stdout.write(`${done.status}\n`);
+    return;
+  }
+
+  const metadata = readJson(metadataPath);
+  if (terminal.has(metadata.status)) {
+    process.stdout.write(`${metadata.status}\n`);
+    return;
+  }
+
+  if (metadata.status !== 'STARTING' && metadata.status !== 'RUNNING') {
+    throw new Error(`invalid run status in metadata: ${metadata.status}`);
+  }
+
+  if (metadata.status === 'RUNNING' &&
+      metadata.runnerPid &&
+      !isProcessAlive(metadata.runnerPid)) {
+    process.stdout.write('DSH_FAILED\n');
+    return;
+  }
+
+  await delay(1000);
+}
+}
+
 function usage() {
 process.stdout.write(
 `dsh-executor ${EXECUTOR_VERSION}\n\n`,
@@ -807,6 +860,9 @@ process.stdout.write(
 
 process.stdout.write(
 '  node executor.mjs status --job .codex-dsh/jobs/<job-id>\n',
+);
+process.stdout.write(
+'  node executor.mjs wait   --job .codex-dsh/jobs/<job-id>\n',
 );
 }
 
@@ -837,6 +893,10 @@ await start(options.job);
 command === 'status'
 ) {
 status(options.job);
+} else if (
+command === 'wait'
+) {
+await wait(options.job);
 } else {
 die(
 `unknown command: ${command}`,

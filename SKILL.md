@@ -38,7 +38,7 @@ Codex must not directly implement the requested change before delegation.
 
 ## Start Workflow
 
-For a new `$dsh-executor` task:
+For a new `$dsh-executor <task>` or `$dsh-executor sync <task>` task:
 
 1. Find the repository root with `git rev-parse --show-toplevel` from the current working directory, then inspect enough of the repository to plan the work. Invocation from any repository subdirectory is supported; do not require the shell to be at the root.
 
@@ -60,11 +60,11 @@ For a new `$dsh-executor` task:
 
 The detached worker must be launched through an execution path that allows it to survive after the Codex command exits. Request explicit approval when the normal sandbox would terminate detached descendants.
 
-Do not fall back to synchronous waiting.
+Do not launch a synchronous worker. Both modes use the same detached worker.
 
-## Critical No-Polling Rule
+## Async Mode: Critical No-Polling Rule
 
-If `start` returns:
+For ordinary `$dsh-executor <task>`, if `start` returns:
 
 `WORKER_STARTED`
 
@@ -81,6 +81,16 @@ Do not:
 * continue implementation work
 
 The user will explicitly invoke `$dsh-executor continue` when they want Codex to resume.
+
+## Sync Mode: Quiet Wait
+
+For `$dsh-executor sync <task>`, after `start` returns `WORKER_STARTED`, call:
+
+`node <skill-directory>/scripts/executor.mjs wait --job .codex-dsh/jobs/<job-id>`
+
+Wait on that command using the largest waiting interval the current Codex runtime supports. The local Node process checks the latest run and emits nothing until it returns `CANDIDATE_FOR_REVIEW`, `DSH_FAILED`, or `CONTRACT_VIOLATION`. Then handle the terminal state using the same review or failure handling as `continue`.
+
+Do not use short-interval `status` polling, frequent log reads, or `sleep 5`, `sleep 10`, or `sleep 20` polling in sync mode. If the Codex turn is interrupted, the detached worker continues and `$dsh-executor continue` can recover the job. Sync owns only the wait observer, never the worker lifecycle.
 
 ## Continue Workflow
 
@@ -112,7 +122,7 @@ If verification fails:
 2. write or replace `REWORK.md`
 3. keep `TASK.md` and `ACCEPTANCE.md` unchanged unless the original specification itself was wrong
 4. call `start` again on the same job
-5. after `WORKER_STARTED`, immediately end the turn
+5. after `WORKER_STARTED`, follow the selected mode: end the turn in async mode, or call `wait` in sync mode
 
 ## Worker Restrictions
 
